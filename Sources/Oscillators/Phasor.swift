@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2025 Alexandre R. J. Francois
+Copyright (c) 2022-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,19 +29,34 @@ fileprivate let twoPi = Float.pi * 2.0
 /// Phasor class:
 /// A complex phasor allows to compute sinusoid values recursively.
 /// Incremental calculations depend on frequency and sampling rate.
-///  This is the base class for individual oscillators and resonators.
-public class Phasor : PhasorProtocol {
+/// This is the base class for individual oscillators and resonators.
+open class Phasor : PhasorProtocol {
     public var frequency: Float {
-        didSet {
-            updateMultiplier()
+        get {
+            -omega * sampleRateOverTwoPi
         }
-    }
-    public var sampleRate: Float {
-        didSet {
+        set {
+            omega = -newValue / sampleRateOverTwoPi
             updateMultiplier()
         }
     }
     
+    public var sampleRate: Float {
+        didSet {
+            sampleRateOverTwoPi = sampleRate / twoPi
+            updateMultiplier()
+        }
+    }
+    
+    /// Angular velocity
+    /// omega = -2 pi frequency / sample rate
+    public var omega: Float { // this is the angular velocity,
+        didSet {
+            updateMultiplier()
+        }
+    }
+    internal var sampleRateOverTwoPi: Float // this is the angular velocity,
+
     // Phasor variables
     // Phasor: Z = Zc + i Zs
     // Multiplier: W = Wc + i Ws
@@ -50,24 +65,30 @@ public class Phasor : PhasorProtocol {
     internal var Wc : Float = 0.0
     internal var Ws : Float = 0.0
     internal var Wcps : Float = 0.0 // pre-computed Oc + Os
-    
+
+    init(omega: Float, sampleRate: Float) {
+        self.sampleRate = sampleRate
+        self.sampleRateOverTwoPi = sampleRate / twoPi
+        self.omega = omega
+        updateMultiplier()
+    }
+
     init(frequency: Float, sampleRate: Float) {
         self.sampleRate = sampleRate
-        self.frequency = frequency
+        self.sampleRateOverTwoPi = sampleRate / twoPi
+        self.omega = -frequency / self.sampleRateOverTwoPi
         updateMultiplier()
     }
 
     func updateMultiplier() {
-        let omega = twoPi * frequency / sampleRate
         Wc = cos(omega)
         Ws = sin(omega)
         Wcps = Wc + Ws
     }
-    
+        
     /// Compute next value of the phasor
     /// Z <- Z * W
     internal func incrementPhase() {
-        // W <- W * O
         // complex multiplication with 3 real multiplications
         let ac = Wc*Zc
         let bd = Ws*Zs
@@ -81,7 +102,7 @@ public class Phasor : PhasorProtocol {
     /// 1/sqrt(x) to reduce computational cost.
     /// This can be applied every few hundred (?) samples
     internal func stabilize() {
-        let k = (3.0 - Zc*Zc - Zs*Zs) / 2.0
+        let k = (Float(3.0) - Zc*Zc - Zs*Zs) / Float(2.0)
         Zc *= k
         Zs *= k
     }

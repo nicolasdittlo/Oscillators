@@ -34,10 +34,10 @@ using namespace oscillators_cpp;
 
 constexpr size_t resonatorStride = 6;
 
-ResonatorBank::ResonatorBank(size_t numResonators, const float* frequencies, const float* alphas, const float* betas, float sampleRate) : m_sampleRate(sampleRate) {
+ResonatorBank::ResonatorBank(size_t numResonators, const float* frequencies, const float* alphas, const float* betas, const float* gammas, float sampleRate) : m_sampleRate(sampleRate) {
     m_resonators.reserve(numResonators);
     for (size_t i=0; i<numResonators; ++i) {
-        m_resonators.emplace_back(std::make_unique<Resonator>(frequencies[i], alphas[i], betas[i], sampleRate));
+        m_resonators.emplace_back(std::make_unique<Resonator>(frequencies[i], alphas[i], betas[i], gammas[i], sampleRate));
     }
 #ifndef STD_CONCURRENCY
     m_dispatchGroup = dispatch_group_create();
@@ -88,6 +88,24 @@ void ResonatorBank::getAmplitudes(float *dest, size_t size) {
     }
 }
 
+void ResonatorBank::getPhases(float *dest, size_t size) {
+    for (size_t i=0; i<std::min(size, m_resonators.size()); ++i) {
+        dest[i]=m_resonators[i]->phase();
+    }
+}
+
+void ResonatorBank::getDeltaPhases(float *dest, size_t size) {
+    for (size_t i=0; i<std::min(size, m_resonators.size()); ++i) {
+        dest[i]=m_resonators[i]->deltaPhase();
+    }
+}
+
+void ResonatorBank::getInstantaneousFrequencies(float *dest, size_t size) {
+    for (size_t i=0; i<std::min(size, m_resonators.size()); ++i) {
+        dest[i]=m_resonators[i]->instantaneousFrequency();
+    }
+}
+
 void ResonatorBank::update(const float sample) {
     for (auto &resonatorPtr : m_resonators) {
         resonatorPtr->update(sample);
@@ -110,16 +128,24 @@ void ResonatorBank::update(const float *frameData, size_t frameLength, size_t sa
 // concurrency with Apple GCD
 
 void ResonatorBank::updateConcurrent(const float *frameData, size_t frameLength, size_t sampleStride) {
-    for (size_t offset = 0; offset < resonatorStride; ++offset) {
-        dispatch_group_async(m_dispatchGroup, m_dispatchQueue, ^{
-            size_t index = offset;
-            while (index < m_resonators.size()) {
-                m_resonators[index]->update(frameData, frameLength, sampleStride);
-                index += resonatorStride;
-            }
-        });
-    }
-    dispatch_group_wait(m_dispatchGroup, DISPATCH_TIME_FOREVER);
+    const size_t numResonators = m_resonators.size();
+    if (numResonators == 0) return;
+
+    // We split the work into a fixed number of chunks.
+    // Usually, 4 to 8 chunks is ideal for mobile/desktop CPUs to balance
+    // core utilization vs GCD overhead.
+    const size_t numChunks = 4;
+
+    dispatch_apply(numChunks, m_dispatchQueue, ^(size_t chunkIdx) {
+        // Calculate the contiguous range for this chunk
+        size_t start = (chunkIdx * numResonators) / numChunks;
+        size_t end = (chunkIdx == numChunks - 1) ? numResonators : ((chunkIdx + 1) * numResonators) / numChunks;
+
+        for (size_t i = start; i < end; ++i) {
+            m_resonators[i]->update(frameData, frameLength, sampleStride);
+        }
+    });    
+    // dispatch_apply does not return until all blocks are finished.
 }
 
 #else

@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2025 Alexandre R. J. Francois
+Copyright (c) 2025-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#import <Foundation/Foundation.h>
-#import "PhasorCpp.h"
+/// An oscillator whose resonant frequency tracks the computed instantaneous frequency
+/// in response to a signal
+public protocol TrackingResonatorProtocol {
+    var naturalFrequency : Float { get }
+    var resonantFrequency : Float { get }
+    var power : Float { get }
+    var amplitude : Float { get }
+    var alpha : Float { get set }
 
-// Wrapper for the Resonator class
-@interface ResonatorCpp : PhasorCpp
-- (instancetype)initWithFrequency:(float)frequency alpha:(float)alpha beta:(float)beta gamma:(float)gamma sampleRate:(float)sampleRate;
-- (float)power;
-- (float)amplitude;
-- (float)alpha;
-- (void)setAlpha:(float)alpha;
-- (float)omAlpha; // used in test...
-- (float)beta;
-- (void)setBeta:(float)beta;
-- (float)omBeta; // used in test...
-- (float)gamma;
-- (void)setGamma:(float)gamma;
-- (float)omGamma; // used in test...
-- (float)c;
-- (float)s;
-- (float)cc;
-- (float)ss;
-- (float)dpc;
-- (float)dps;
-- (float)phase;
-- (float)deltaPhase;
-- (float)instantaneousFrequency;
-- (void)updateWithSample:(float)sample
-NS_SWIFT_NAME(updateWithSample(value:));
-- (void)update:(float)sample
-NS_SWIFT_NAME(update(sample:));
-- (void)update:(float*)frame frameLength:(int)frameLength sampleStride:(int)sampleStride
-NS_SWIFT_NAME(update(frameData:frameLength:sampleStride:));
-@end
+    /// This function performs an update of the resonator amplitude from a single sample
+    func update(sample: Float, maxPower: Float)
+    
+    /// This function performs an update of the resonator amplitude from an array of samples
+    func update(samples: [Float], maxPower: Float)
+    
+    /// This function performs an update of the resonator amplitude from a buffer of samples
+    func update(frameData: UnsafeMutablePointer<Float>, frameLength: Int, sampleStride: Int, maxPower: Float)
+}

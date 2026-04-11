@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2025 Alexandre R. J. Francois
+Copyright (c) 2025-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,64 +22,51 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef ResonatorBank_hpp
-#define ResonatorBank_hpp
+#ifndef TrackingResonatorBank_hpp
+#define TrackingResonatorBank_hpp
 
-#include "Resonator.hpp"
+#include "TrackingResonator.hpp"
 
 #include <vector>
-
-// use GCD concurrency by default
-// uncomment the next line to use std::async instead
-// #define STD_CONCURRENCY
-
-#ifndef STD_CONCURRENCY
 #include <dispatch/dispatch.h>
-#endif
 
 namespace oscillators_cpp {
 
-class ResonatorBank {
+class TrackingResonatorBank {
 private:
     float m_sampleRate;
-    std::vector<std::unique_ptr<Resonator> > m_resonators;
+    std::vector<std::unique_ptr<TrackingResonator> > m_resonators;
 
-#ifndef STD_CONCURRENCY
-    dispatch_group_t m_dispatchGroup;
+    // max power accumulation
+    float m_sigma;
+    float m_omSigma;
+    std::atomic<float> m_accPower;
+    
     dispatch_queue_t m_dispatchQueue;
-#endif
 
 public:
-    ResonatorBank & operator=(const ResonatorBank&) = delete;
-    ResonatorBank(const ResonatorBank&) = delete;
+    TrackingResonatorBank & operator=(const TrackingResonatorBank&) = delete;
+    TrackingResonatorBank(const TrackingResonatorBank&) = delete;
 
-    ResonatorBank(size_t numResonators, const float* frequencies, const float* alphas, const float* betas, const float* gammas, float sampleRate);
-#ifndef STD_CONCURRENCY
-    ~ResonatorBank();
-#endif
+    TrackingResonatorBank(size_t numResonators, const float* naturalFrequencies, const float* alphas, const float* betas, const float* gammas, float sampleRate);
 
     float sampleRate() { return m_sampleRate; }
     size_t numResonators() { return m_resonators.size(); }
-    float frequencyValue(size_t index);
-    float alphaValue(size_t index);
-    void setAllAlphas(float alpha);
+    void getNaturalFrequencies(float *dest, size_t size);
+    void getResonantFrequencies(float *dest, size_t size);
+    float resonantFrequencyValue(size_t index);
     void getPowers(float *dest, size_t size);
     void getAmplitudes(float *dest, size_t size);
     void getPhases(float *dest, size_t size);
     void getDeltaPhases(float *dest, size_t size);
-    void getInstantaneousFrequencies(float *dest, size_t size);
+    float accPower() const { return m_accPower; };
     void update(const float sample);
     void update(const std::vector<float> &samples);
     void update(const float *frameData, size_t frameLength, size_t sampleStride);
     void updateConcurrent(const float *frameData, size_t frameLength, size_t sampleStride);
-    
-#ifdef STD_CONCURRENCY
-private:
-    void updateEvery(size_t mod, size_t offset, const float *frameData, size_t frameLength, size_t sampleStride);
-#endif
-
+    void setTimeConstant(float tau, size_t frameLength, size_t sampleStride, float sampleRate);
 };
 
 } // oscillators_cpp
 
-#endif /* ResonatorBank_hpp */
+#endif /* TrackingResonatorBank_hpp */

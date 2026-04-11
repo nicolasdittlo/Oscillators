@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2025 Alexandre R. J. Francois
+Copyright (c) 2022-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,11 @@ constexpr float twoPi = 2.0 * PI;
 
 // Phasor class: base for individual oscillators
 class Phasor {
+    
+private:
+    float m_omega; // must be set trhough accessor
+
 protected:
-    float m_frequency;
     float m_sampleRate;
     
     // Phasor
@@ -47,17 +50,19 @@ protected:
 
     void updateMultiplier();
 
-public:
-    Phasor & operator=(const Phasor&) = delete;
-    Phasor(const Phasor&) = delete;
-    virtual ~Phasor() = default;
-    
-    Phasor(float frequency, float sampleRate);
+public:    
+    Phasor(float frequency, float sampleRate, bool angular = false);
 
-    float frequency() const { return m_frequency; }
+    float omega() const { return m_omega; }
+    void setOmega(float omega);
+    float frequency() const { return -m_sampleRate * m_omega / twoPi; }
     void setFrequency(float frequency);
     float sampleRate() const { return m_sampleRate; }
+    void setSampleRate(float sampleRate);
 
+    float Zc() const { return m_Zc; }
+    float Zs() const { return m_Zs; }
+    
     void incrementPhase();
     void stabilize();
 };

@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2025 Alexandre R. J. Francois
+Copyright (c) 2022-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -47,11 +47,16 @@ public class ResonatorBankVec {
     public var amplitudes : [Float] {
         vForce.sqrt(powers)
     }
+    public var phases : [Float] {
+        var phases = [Float](repeating: 0, count: numResonators)
+        vDSP.phase(R, result: &phases)
+        return phases
+    }
 
     public  let alphas : [Float] // can be tuned independently for each frequency
-    private let omAlphas : [Float] // can be tuned independently for each frequency
-    private var betas : [Float]
-    private var omBetas : [Float]
+    public let omAlphas : [Float] // can be tuned independently for each frequency
+    public var betas : [Float]
+    public let omBetas : [Float]
     
     private var twoNumResonators : Int
 
@@ -114,13 +119,13 @@ public class ResonatorBankVec {
         var one = Float(1.0)
         vDSP_vfill(&one, Z.realp, 1, vDSP_Length(numResonators))
 
-        let twoPiOverSampleRate = twoPi / sampleRate
+        let minusTwoPiOverSampleRate = -twoPi / sampleRate
         wPtr = UnsafeMutableBufferPointer<Float>.allocate(capacity: twoNumResonators)
-        wPtr.initialize(repeating: twoPiOverSampleRate)
+        wPtr.initialize(repeating: minusTwoPiOverSampleRate)
         W = DSPSplitComplex(realp: wPtr.baseAddress!,
                             imagp: wPtr.baseAddress! + numResonators)
         
-        // multiply 2 * PI / sampleRate by frequency for each resonator
+        // multiply -2 * PI / sampleRate by frequency for each resonator
         vDSP_vmul(W.realp, 1,
                   frequencies, 1,
                   W.realp, 1,

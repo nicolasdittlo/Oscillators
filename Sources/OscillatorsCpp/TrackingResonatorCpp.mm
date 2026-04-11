@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2025 Alexandre R. J. Francois
+Copyright (c) 2025-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,33 +22,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#import "ResonatorCpp.h"
+#import "TrackingResonatorCpp.h"
 #import "PhasorCppProtected.h"
 
 #import <Foundation/Foundation.h>
 
-#include "Resonator.hpp"
+#include "TrackingResonator.hpp"
 
 using namespace oscillators_cpp;
 
-@implementation ResonatorCpp
+@implementation TrackingResonatorCpp
 
-- (instancetype)initWithFrequency:(float)frequency alpha:(float)alpha beta:(float)beta gamma:(float)gamma sampleRate:(float)sampleRate {
+- (instancetype)initWithNaturalFrequency:(float)naturalFrequency alpha:(float)alpha beta:(float)beta gamma:(float)gamma sampleRate:(float)sampleRate {
     if (self = [super init]) {
-        self.oscillator = new Resonator(frequency, alpha, beta, gamma, sampleRate);
+        self.oscillator = new TrackingResonator(naturalFrequency, alpha, beta, gamma, sampleRate);
     }
     return self;
 }
 
-- (Resonator*)resonator {
-    return (Resonator*)self.oscillator;
+- (TrackingResonator*)resonator {
+    return (TrackingResonator*)self.oscillator;
 }
 
+- (float)naturalFrequency {
+    return self.resonator->naturalFrequency();
+}
+
+- (void)setNaturalFrequency:(float)frequency alpha:(float)alpha beta:(float)beta gamma:(float)gamma {
+    return self.resonator->setNaturalFrequency(frequency, alpha, beta, gamma);
+}
+
+- (float)resonantFrequency {
+    return self.resonator->resonantFrequency();
+}
 
 - (float)power {
     return self.resonator->power();
 }
-
 
 - (float)amplitude {
     return self.resonator->amplitude();
@@ -90,10 +100,6 @@ using namespace oscillators_cpp;
     return self.resonator->omGamma();
 }
 
-- (float)instantaneousFrequency {
-    return self.resonator->instantaneousFrequency();
-}
-
 - (float)c {
     return self.resonator->c();
 }
@@ -110,16 +116,16 @@ using namespace oscillators_cpp;
     return self.resonator->ss();
 }
 
-- (float)phase {
-    return self.resonator->phase();
-}
-
 - (float)dpc {
     return self.resonator->dpc();
 }
 
 - (float)dps {
     return self.resonator->dps();
+}
+
+- (float)phase {
+    return self.resonator->phase();
 }
 
 - (float)deltaPhase {
@@ -130,12 +136,12 @@ using namespace oscillators_cpp;
     self.resonator->updateWithSample(sample);
 }
 
-- (void)update:(float)sample {
-    self.resonator->update(sample);
+- (void)update:(float)sample maxPower:(float)maxPower {
+    self.resonator->update(sample, maxPower);
 }
 
-- (void)update:(float*)frame frameLength:(int)frameLength sampleStride:(int)sampleStride {
-    self.resonator->update(frame, frameLength, sampleStride);
+- (void)update:(float*)frame frameLength:(int)frameLength sampleStride:(int)sampleStride maxPower:(float)maxPower {
+    self.resonator->update(frame, frameLength, sampleStride, maxPower);
 }
 
 @end

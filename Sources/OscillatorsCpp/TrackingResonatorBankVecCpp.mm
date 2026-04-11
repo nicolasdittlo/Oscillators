@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2024-2025 Alexandre R. J. Francois
+Copyright (c) 2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,23 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#import "ResonatorBankVecCpp.h"
+#import "TrackingResonatorBankVecCpp.h"
 
 #import <Foundation/Foundation.h>
 
-#include "ResonatorBankVec.hpp"
+#include "TrackingResonatorBankVec.hpp"
 
 using namespace oscillators_cpp;
 
-@interface ResonatorBankVecCpp()
-@property oscillators_cpp::ResonatorBankVec *resonatorBank;
+@interface TrackingResonatorBankVecCpp()
+@property oscillators_cpp::TrackingResonatorBankVec *resonatorBank;
 @end
 
-@implementation ResonatorBankVecCpp
+@implementation TrackingResonatorBankVecCpp
 
-- (instancetype)initWithNumResonators:(int)numResonators frequencies:(const float*)frequencies alphas:(const float*)alphas betas:(const float*)betas sampleRate:(float)sampleRate {
+- (instancetype)initWithNumResonators:(int)numResonators naturalFrequencies:(const float*)naturalFrequencies alphas:(const float*)alphas betas:(const float*)betas gammas:(const float*)gammas sampleRate:(float)sampleRate {
     if (self = [super init]) {
-        self.resonatorBank = new ResonatorBankVec(numResonators, frequencies, alphas, betas, sampleRate);
+        self.resonatorBank = new TrackingResonatorBankVec(numResonators, naturalFrequencies, alphas, betas, gammas, sampleRate);
     }
     return self;
 }
@@ -55,36 +55,32 @@ using namespace oscillators_cpp;
     return static_cast<int>(self.resonatorBank->numResonators());
 }
 
-- (float)frequencyValue:(int)index {
-    return self.resonatorBank->frequencyValue(index);
+- (void)getNaturalFrequencies:(float*)dest size: (int)size {
+    self.resonatorBank->getNaturalFrequencies(dest, size);
 }
 
-- (float)alphaValue:(int)index {
-    return self.resonatorBank->alphaValue(index);
-}
-
-- (float)betaValue:(int)index {
-    return self.resonatorBank->betaValue(index);
+- (void)getResonantFrequencies:(float*)dest size: (int)size {
+    self.resonatorBank->getResonantFrequencies(dest, size);
 }
 
 - (void)getPowers:(float*)dest size: (int)size {
     self.resonatorBank->getPowers(dest, size);
 }
 
-//- (float)powerValue:(int)index {
-//    return self.resonatorBank->powerValue(index);
-//}
-
 - (void)getAmplitudes:(float*)dest size: (int)size {
     self.resonatorBank->getAmplitudes(dest, size);
 }
 
-//- (float)amplitudeValue:(int)index {
-//    return self.resonatorBank->amplitudeValue(index);
-//}
-
 - (void)getPhases:(float*)dest size: (int)size {
     self.resonatorBank->getPhases(dest, size);
+}
+
+- (void)getDeltaPhases:(float*)dest size: (int)size {
+    self.resonatorBank->getDeltaPhases(dest, size);
+}
+
+- (float)accPower {
+    return self.resonatorBank->accPower();
 }
 
 - (void)update:(float)sample {
@@ -97,6 +93,10 @@ using namespace oscillators_cpp;
 
 - (void)update:(float*)frame frameLength:(int)frameLength sampleStride:(int)sampleStride powers:(float*)powers amplitudes:(float*)amplitudes {
     self.resonatorBank->update(frame, frameLength, sampleStride, powers, amplitudes);
+}
+
+- (void)setTimeConstant:(float)tau sampleRate:(float)sampleRate {
+    self.resonatorBank->setTimeConstant(tau, sampleRate);
 }
 
 @end

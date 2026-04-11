@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2025 Alexandre R. J. Francois
+Copyright (c) 2025-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,13 @@ import Foundation
 import Accelerate
 
 fileprivate let twoPi = Float.pi * 2.0
-fileprivate let instantaneousFrequencyPowerThreshold = Float(0.000001)
+fileprivate let minMaxPower = Float(0.001)
 
 /// An oscillator that resonates with a specific frequency if present in an input signal,
-/// i.e. that naturally oscillates with greater amplitude at a given frequency, than at other frequencies.
-public class Resonator : Phasor, ResonatorProtocol {
-    public static func alphaHeuristic(frequency: Float, sampleRate: Float, k: Float = 1, n: Float = 1) -> Float {
-        1 - exp(-frequency / (sampleRate * k * pow(log10(1+frequency), n)))
+/// and adjust its resonant frequency to track the actual frequency of the signal component
+public class TrackingResonator : Phasor, TrackingResonatorProtocol {
+    public static func gammaHeuristic(frequency: Float, sampleRate: Float, k: Float = 1, n: Float = 1) -> Float {
+        Resonator.alphaHeuristic(frequency: frequency, sampleRate: sampleRate, k: k, n: n) / 2.0
     }
 
     public var power: Float {
@@ -56,13 +56,6 @@ public class Resonator : Phasor, ResonatorProtocol {
         return (dpc/mag, dps/mag)
     }
     
-    public var instantaneousFrequency: Float {
-        if power < instantaneousFrequencyPowerThreshold {
-            return frequency
-        }
-        return frequency + atan2(dps,dpc) * sampleRate / twoPi
-    }
-    
     public var alpha: Float {
         didSet {
             omAlpha = 1.0 - alpha
@@ -76,7 +69,7 @@ public class Resonator : Phasor, ResonatorProtocol {
         }
     }
     private(set) var omBeta : Float = 0.0
-
+    
     public var gamma: Float {
         didSet {
             omGamma = 1.0 - gamma
@@ -84,6 +77,8 @@ public class Resonator : Phasor, ResonatorProtocol {
     }
     private(set) var omGamma : Float = 0.0
 
+    private(set) var trackFrequencyPowerThreshold = Float(0.001)
+    
     // complex: r = c + j s
     private(set) var c: Float = 0.0
     private(set) var s: Float = 0.0
@@ -93,17 +88,30 @@ public class Resonator : Phasor, ResonatorProtocol {
     public private(set) var ss: Float = 0.0
     
     // delta-phase components (not normalized)
-    public private(set) var dpc: Float = 0.0
+    public private(set) var dpc: Float = 1.0
     public private(set) var dps: Float = 0.0
     
-    public init(frequency: Float, alpha: Float, beta: Float? = nil, gamma: Float? = nil, sampleRate: Float) {
+    public var resonantFrequency: Float {
+        frequency
+    }
+    
+    public private(set) var naturalFrequency: Float
+    public func setNaturalFrequency(_ naturalFrequency: Float, alpha: Float, beta: Float? = nil, gamma: Float? = nil){
+        self.naturalFrequency = naturalFrequency
+        self.alpha = alpha
+        self.beta = beta ?? alpha
+        self.gamma = gamma ?? alpha
+    }
+    
+    public init(naturalFrequency: Float, alpha: Float, beta: Float? = nil, gamma: Float? = nil, sampleRate: Float) {
+        self.naturalFrequency = naturalFrequency
         self.alpha = alpha
         self.omAlpha = 1.0 - alpha
         self.beta = beta ?? alpha
         self.omBeta = 1.0 - self.beta
         self.gamma = gamma ?? alpha
         self.omGamma = 1.0 - self.gamma
-        super.init(frequency: frequency, sampleRate: sampleRate)
+        super.init(frequency: naturalFrequency, sampleRate: sampleRate)
     }
     
     func updateWithSample(_ sample: Float) {
@@ -116,28 +124,41 @@ public class Resonator : Phasor, ResonatorProtocol {
         // update
         cc = omBeta * cc + beta * c
         ss = omBeta * ss + beta * s
+        
         // compute current * conjugate(previous)
         // the phase time derivative estimate is the arg of this complex number
-        // Smoothing (EWMA) with gamma
-        dpc = omGamma * dpc + gamma * (cc * lcc + ss * lss)
-        dps = omGamma * dps + gamma * (ss * lcc - cc * lss)
-
+        // no need to smoothe here
+        dpc = cc * lcc + ss * lss
+        dps = ss * lcc - cc * lss
+        
+        // Update tracking
+        if power > trackFrequencyPowerThreshold {
+            // This is an EWMA with parameter gamma
+            omega -= gamma * atan2(dps, dpc)
+        } else {
+            // go back to natural frequency
+            self.frequency = naturalFrequency
+        }
+        
         incrementPhase()
     }
     
-    public func update(sample: Float) {
+    public func update(sample: Float, maxPower: Float = 0.25) {
+        trackFrequencyPowerThreshold = max(minMaxPower, maxPower) / Float(1000.0)
         updateWithSample(sample)
         stabilize() // this is overkill but necessary
     }
     
-    public func update(samples: [Float]) {
+    public func update(samples: [Float], maxPower: Float = 0.25) {
+        trackFrequencyPowerThreshold = max(minMaxPower, maxPower) / Float(1000.0)
         for sample in samples {
             updateWithSample(sample)
         }
         stabilize() // this is overkill but necessary
     }
 
-    public func update(frameData: UnsafeMutablePointer<Float>, frameLength: Int, sampleStride: Int) {
+    public func update(frameData: UnsafeMutablePointer<Float>, frameLength: Int, sampleStride: Int, maxPower: Float = 0.25) {
+        trackFrequencyPowerThreshold = max(minMaxPower, maxPower) / Float(1000.0)
         for sampleIndex in stride(from: 0, to: sampleStride * frameLength, by: sampleStride) {
             updateWithSample(frameData[sampleIndex])
         }

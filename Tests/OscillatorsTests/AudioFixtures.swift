@@ -1,7 +1,7 @@
 /**
 MIT License
 
-Copyright (c) 2022-2024 Alexandre R. J. Francois
+Copyright (c) 2022-2026 Alexandre R. J. Francois
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,5 +26,4 @@ class AudioFixtures {
     static let defaultSampleRate : Float = 44100.0
     static let sampleDuration44100 : Float = 1.0 / 44100.0
     static let sampleDuration48000 : Float = 1.0 / 48000.0
-
 }
