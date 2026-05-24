@@ -30,9 +30,7 @@ using namespace oscillators_cpp;
 
 constexpr float minMaxPower = 0.001;
 
-TrackingResonator::TrackingResonator(float naturalFrequency, float alpha, float beta, float gamma, float sampleRate) : Phasor(naturalFrequency, sampleRate),
-m_naturalFrequency(naturalFrequency), m_alpha(alpha), m_omAlpha(1.0 - alpha), m_beta(beta), m_omBeta(1.0 - beta), m_gamma(gamma), m_omGamma(1.0 - gamma),
-m_dpc(1.0), m_dps(0.0), m_trackFrequencyPowerThreshold(0.001) {
+TrackingResonator::TrackingResonator(float naturalFrequency, float alpha, float beta, float gamma, float sampleRate) : Phasor(naturalFrequency, sampleRate), m_naturalFrequency(naturalFrequency), m_alpha(alpha), m_omAlpha(1.0 - alpha), m_beta(beta), m_omBeta(1.0 - beta), m_cc(1.0), m_ss(0.0), m_gamma(gamma), m_omGamma(1.0 - gamma), m_dpc(1.0), m_dps(0.0), m_trackFrequencyPowerThreshold(0.001) {
 }
 
 void TrackingResonator::setNaturalFrequency(float frequency, float alpha, float beta, float gamma) {

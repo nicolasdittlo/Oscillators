@@ -75,6 +75,8 @@ tracking_resonator_new(float natural_frequency,
     t->_omAlpha = 1.0 - alpha;
     t->_beta = beta;
     t->_omBeta = 1.0 - beta;
+    t->_cc = 1.0;
+    t->_ss = 0.0;
     t->_gamma = gamma;
     t->_omGamma = 1.0 - gamma;
     t->_dpc = 1.0;
